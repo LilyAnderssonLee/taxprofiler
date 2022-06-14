@@ -218,7 +218,8 @@ workflow PROFILING {
     }
 
     emit:
-    profiles = ch_raw_profiles    // channel: [ val(meta), [ reads ] ] - should be text files or biom
-    versions = ch_versions          // channel: [ versions.yml ]
-    mqc      = ch_multiqc_files
+    profiles       = ch_raw_profiles    // channel: [ val(meta), [ reads ] ] - should be text files or biom
+    versions       = ch_versions          // channel: [ versions.yml ]
+    mqc            = ch_multiqc_files
+    visualizations = ch_visualizations
 }
