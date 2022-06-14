@@ -2,15 +2,18 @@
 // Run profiling
 //
 
-include { MALT_RUN                    } from '../../modules/nf-core/modules/malt/run/main'
-include { MEGAN_RMA2INFO              } from '../../modules/nf-core/modules/megan/rma2info/main'
-include { KRAKEN2_KRAKEN2             } from '../../modules/nf-core/modules/kraken2/kraken2/main'
-include { CENTRIFUGE_CENTRIFUGE       } from '../../modules/nf-core/modules/centrifuge/centrifuge/main'
-include { CENTRIFUGE_KREPORT          } from '../../modules/nf-core/modules/centrifuge/kreport/main'
-include { METAPHLAN3                  } from '../../modules/nf-core/modules/metaphlan3/main'
-include { KAIJU_KAIJU                 } from '../../modules/nf-core/modules/kaiju/kaiju/main'
-include { KAIJU_KAIJU2TABLE           } from '../../modules/nf-core/modules/kaiju/kaiju2table/main'
-include { DIAMOND_BLASTX              } from '../../modules/nf-core/modules/diamond/blastx/main'
+include { MALT_RUN                                 } from '../../modules/nf-core/modules/malt/run/main'
+include { MEGAN_RMA2INFO                           } from '../../modules/nf-core/modules/megan/rma2info/main'
+include { KRAKEN2_KRAKEN2                          } from '../../modules/nf-core/modules/kraken2/kraken2/main'
+include { KRAKENTOOLS_KREPORT2KRONA                } from '../../modules/nf-core/modules/krakentools/kreport2krona/main'
+include { KRONA_CLEANUP as KRONA_KRAKENCLEANUP     } from '../../modules/local/krona_cleanup'
+include { KRONA_KTIMPORTTEXT as KRONA_IMPORTKRAKEN } from '../../modules/nf-core/modules/krona/ktimporttext/main'
+include { CENTRIFUGE_CENTRIFUGE                    } from '../../modules/nf-core/modules/centrifuge/centrifuge/main'
+include { CENTRIFUGE_KREPORT                       } from '../../modules/nf-core/modules/centrifuge/kreport/main'
+include { METAPHLAN3                               } from '../../modules/nf-core/modules/metaphlan3/main'
+include { KAIJU_KAIJU                              } from '../../modules/nf-core/modules/kaiju/kaiju/main'
+include { KAIJU_KAIJU2TABLE                        } from '../../modules/nf-core/modules/kaiju/kaiju2table/main'
+include { DIAMOND_BLASTX                           } from '../../modules/nf-core/modules/diamond/blastx/main'
 
 
 workflow PROFILING {
@@ -22,6 +25,7 @@ workflow PROFILING {
     ch_versions             = Channel.empty()
     ch_multiqc_files        = Channel.empty()
     ch_raw_profiles    = Channel.empty()
+    ch_visualizations  = Channel.empty()
 
 /*
         COMBINE READS WITH POSSIBLE DATABASES
@@ -124,8 +128,16 @@ workflow PROFILING {
                                 }
 
         KRAKEN2_KRAKEN2 ( ch_input_for_kraken2.reads, ch_input_for_kraken2.db, params.kraken2_save_reads, params.kraken2_save_readclassification )
+        KRAKENTOOLS_KREPORT2KRONA ( KRAKEN2_KRAKEN2.out.report )
+        KRONA_KRAKENCLEANUP ( KRAKENTOOLS_KREPORT2KRONA.out.txt )
+        KRONA_IMPORTKRAKEN( KRONA_KRAKENCLEANUP.out.txt.map{[[id: it[0].db_name], it[1]]}.groupTuple() )
+
         ch_multiqc_files   = ch_multiqc_files.mix( KRAKEN2_KRAKEN2.out.report.collect{it[1]}.ifEmpty([])  )
+        ch_visualizations  = ch_visualizations.mix( KRONA_IMPORTKRAKEN.out.html )
         ch_versions        = ch_versions.mix( KRAKEN2_KRAKEN2.out.versions.first() )
+        ch_versions        = ch_versions.mix( KRAKENTOOLS_KREPORT2KRONA.out.versions.first() )
+        ch_versions        = ch_versions.mix( KRONA_KRAKENCLEANUP.out.versions.first() )
+        ch_versions        = ch_versions.mix( KRONA_IMPORTKRAKEN.out.versions.first() )
         ch_raw_profiles    = ch_raw_profiles.mix( KRAKEN2_KRAKEN2.out.report )
 
     }
@@ -210,4 +222,3 @@ workflow PROFILING {
     versions = ch_versions          // channel: [ versions.yml ]
     mqc      = ch_multiqc_files
 }
-
