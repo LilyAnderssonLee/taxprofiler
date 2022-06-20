@@ -62,6 +62,7 @@ include { SHORTREAD_HOSTREMOVAL         } from '../subworkflows/local/shortread_
 include { LONGREAD_HOSTREMOVAL          } from '../subworkflows/local/longread_hostremoval'
 include { SHORTREAD_COMPLEXITYFILTERING } from '../subworkflows/local/shortread_complexityfiltering'
 include { PROFILING                     } from '../subworkflows/local/profiling'
+include { POSTPROCESSING_KRONA          } from '../subworkflows/local/postprocessing_krona'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -208,6 +209,13 @@ workflow TAXPROFILER {
 
     PROFILING ( ch_reads_runmerged, DB_CHECK.out.dbs )
     ch_versions = ch_versions.mix( PROFILING.out.versions )
+
+    /*
+        SUBWORKFLOW: KRONA VISUALISATION
+    */
+    POSTPROCESSING_KRONA ( PROFILING.out.krona, DB_CHECK.out.dbs )
+    ch_versions = ch_versions.mix( POSTPROCESSING_KRONA.out.versions )
+
 
     /*
         MODULE: MultiQC
