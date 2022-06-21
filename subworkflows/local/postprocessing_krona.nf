@@ -33,10 +33,21 @@ workflow POSTPROCESSING_KRONA {
 
     // TODO PUSH BACK CENTRIFUGE_KREPORT TO PROFILING.NF WHERE DATABASE ALREADY IS?
     ch_input_for_centrifuge_kreport = ch_files_for_krona.centrifuge
-                                        .dump(tag: "db_for_kreport_pre")
-                                        .join(ch_databases, by: 0)
-                                        .dump(tag: "db_for_kreport_post")
+                                        .map{
+                                            meta, file ->
+                                                def db_meta     = [ tool: meta.tool, db_name: meta.db_name, db_params: meta.db_params ]
+                                                def kfile        = file
+                                                def sample_meta = [ id: meta.id, run_accession: meta.run_accession, instrument_platform: meta.instrument_platform, single_end: meta.single_end, is_fasta: meta.is_fasta ]
+                                            [ db_meta, kfile, sample_meta ]
+                                        }
+                                        .dump(tag: "sample")
 
+
+    ch_input_for_centrifuge_krona = ch_databases.centrifuge
+                                        .collect()
+                                        .dump(tag: "db")
+                                        .combine(ch_input_for_centrifuge_kreport, by: 0)
+                                        .dump(tag: "sm")
 
     // Kraken
     KRAKENTOOLS_KREPORT2KRONA ( ch_files_for_krona.kraken2 )
@@ -52,7 +63,6 @@ workflow POSTPROCESSING_KRONA {
 
 
     KRONA_KTIMPORTTEXT (ch_input_for_ktimporttext)
-
 
     ch_versions        = ch_versions.mix( KRONA_KTIMPORTTEXT.out.versions.first() )
 
